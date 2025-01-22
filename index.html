@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DDI Chat Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: calc(100vh - 200px);
+        }
+        .messages {
+            height: calc(100% - 60px);
+        }
+        .user-message {
+            background-color: #3B82F6;
+            color: white;
+            margin-left: 3rem;
+        }
+        .assistant-message {
+            background-color: #F3F4F6;
+            margin-right: 3rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-3xl font-bold text-center mb-8 text-blue-600">Pals Bot</h1>
+            
+            <div class="bg-white rounded-lg shadow-lg p-6 chat-container">
+                <div class="messages overflow-y-auto mb-4" id="chat-messages">
+                    <div class="bg-blue-100 p-4 rounded-lg mb-4">
+                        <p class="text-gray-800">👋 Hi, sweetheart! I'm here to listen and help with anything you need. What's on your mind?</p>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2">
+                    <input type="text" id="user-input" 
+                           class="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                           placeholder="Type your message here..."
+                           onkeypress="if(event.key === 'Enter') sendMessage()">
+                    <button onclick="sendMessage()" 
+                            class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                        Send
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const OLLAMA_BASE_URL = 'http://localhost:11434';
+
+        function appendMessage(message, isUser) {
+            const messagesDiv = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `p-4 rounded-lg mb-4 ${isUser ? 'user-message' : 'assistant-message'}`;
+            messageDiv.innerHTML = `<p>${message}</p>`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            appendMessage(message, true);
+            input.value = '';
+            input.disabled = true;
+            
+            try {
+                const prompt = `You are a caring and supportive assistant for teenage girls. Your goal is to provide quick, effective, and reassuring advice about their concerns with around 100 words, such as periods, cramps, or mood swings. Keep responses short, clear, and supportive. Use simple, empathetic language and focus on practical solutions. Avoid long explanations—prioritize concise, helpful tips and emotional reassurance.
+
+User: ${message}`;
+
+                const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'mistral',
+                        prompt: prompt,
+                        stream: false
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to get response from Ollama');
+                }
+
+                const data = await response.json();
+                appendMessage(data.response, false);
+            } catch (error) {
+                appendMessage('Sorry, there was an error processing your message. Please try again later.', false);
+                console.error('Error:', error);
+            }
+            
+            input.disabled = false;
+            input.focus();
+        }
+
+        // Focus input on page load
+        document.getElementById('user-input').focus();
+    </script>
+</body>
+</html>
